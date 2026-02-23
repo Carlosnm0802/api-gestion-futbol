@@ -1,11 +1,15 @@
 from fastapi import FastAPI
+from .database import engine
+from . import models
+
+#Esta linea crea las tablas de la base de datos si no existen, basándose en los modelos definidos en models.py
+models.Base.metadata.create_all(bind=engine)
+
 app = FastAPI(
-    title="API de Gestion de Futbol Ocotlan",
-    description="API para gestionar equipos, jugadores y partidos de futbol en Ocotlan.",
+    title="API de Gestión de Fútbol Ocotlán",
     version="1.0.0"
 )
+
 @app.get("/")
 def root():
-    return {"message": "Bienvenido a la API de Gestión de Futbol Ocotlan",
-            "estado": "Servidor funcionando correctamente"}
-
+    return {"mensaje": "Conexión con Supabase establecida"}
