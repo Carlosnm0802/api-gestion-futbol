@@ -11,7 +11,6 @@ class Temporada(Base):
     fecha_fin = Column(Date)
     es_actual = Column(Boolean, default=True)
     
-    # Relaciones
     equipos = relationship("Equipo", back_populates="temporada")
     partidos = relationship("Partido", back_populates="temporada")
 
@@ -30,7 +29,6 @@ class Equipo(Base):
     categoria_id = Column(Integer, ForeignKey("categorias.id"))
     temporada_id = Column(Integer, ForeignKey("temporadas.id"))
 
-    # Relaciones
     categoria = relationship("Categoria", back_populates="equipos")
     temporada = relationship("Temporada", back_populates="equipos")
     jugadores = relationship("Jugador", back_populates="equipo")
@@ -43,12 +41,12 @@ class Jugador(Base):
     num_camiseta = Column(Integer)
     posicion = Column(String)
     fecha_nacimiento = Column(Date)
-    es_active = Column(Boolean, default=True)
+    es_activo = Column(Boolean, default=True) # Corregido para coincidir con el diagrama
     equipo_id = Column(Integer, ForeignKey("equipos.id"))
 
-    # Relaciones
     equipo = relationship("Equipo", back_populates="jugadores")
     goles = relationship("Gol", back_populates="jugador")
+    sanciones = relationship("Sancion", back_populates="jugador") # Nueva relación
 
 class Partido(Base):
     __tablename__ = "partidos"
@@ -62,9 +60,9 @@ class Partido(Base):
     arbitro = Column(String, nullable=True)
     temporada_id = Column(Integer, ForeignKey("temporadas.id"))
 
-    # Relaciones
     temporada = relationship("Temporada", back_populates="partidos")
     eventos_goles = relationship("Gol", back_populates="partido")
+    eventos_sanciones = relationship("Sancion", back_populates="partido") # Nueva relación
 
 class Gol(Base):
     __tablename__ = "goles"
@@ -74,6 +72,15 @@ class Gol(Base):
     minuto = Column(Integer)
     es_penalti = Column(Boolean, default=False)
 
-    # Relaciones
     partido = relationship("Partido", back_populates="eventos_goles")
     jugador = relationship("Jugador", back_populates="goles")
+
+class Sancion(Base): 
+    __tablename__ = "sanciones" 
+    id = Column(Integer, primary_key=True, index=True)
+    partido_id = Column(Integer, ForeignKey("partidos.id"))
+    jugador_id = Column(Integer, ForeignKey("jugadores.id"))
+    tipo_sancion = Column(String) # "Amarilla", "Roja", etc.
+
+    partido = relationship("Partido", back_populates="eventos_sanciones")
+    jugador = relationship("Jugador", back_populates="sanciones")
