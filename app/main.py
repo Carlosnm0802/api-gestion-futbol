@@ -82,3 +82,27 @@ def leer_jugador(jugador_id: int, db: Session = Depends(get_db)):
     if not db_jugador:
         raise HTTPException(status_code=404, detail="Jugador no encontrado")
     return db_jugador
+
+# --- RUTAS DE PARTIDOS ---
+
+@app.post("/partidos/", response_model=schemas.Partido, tags=["Partidos"])
+def crear_partido(partido: schemas.PartidoCreate, db: Session = Depends(get_db)):
+    return crud.create_partido(db=db, partido=partido)
+
+@app.get("/partidos/", response_model=List[schemas.Partido], tags=["Partidos"])
+def listar_partidos(db: Session = Depends(get_db)):
+    return crud.get_partidos(db)
+
+#RUTAS DE EVENTOS (GOLES Y SANCIONES)
+
+@app.post("/goles/", response_model=schemas.Gol, tags=["Eventos"])
+def anotar_gol(gol: schemas.GolCreate, db: Session = Depends(get_db)):
+    """Registra un gol y actualiza automáticamente el marcador del partido."""
+    return crud.registrar_gol(db=db, gol_data=gol)
+
+@app.post("/sanciones/", response_model=schemas.Sancion, tags=["Eventos"])
+def registrar_sancion(sancion: schemas.SancionCreate, db: Session = Depends(get_db)):
+    """
+    Registra una tarjeta (Amarilla/Roja) validando que el jugador esté en el partido.
+    """
+    return crud.registrar_sancion(db=db, sancion_data=sancion)
