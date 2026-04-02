@@ -101,3 +101,15 @@ class PartidoDetalle(Partido):
     equipo_local: Optional[Equipo] = None
     equipo_visitante: Optional[Equipo] = None
     temporada: Optional[Temporada] = None
+#Esquema para realizar la filas de las posiciones de cada categoria
+class TablaPosiciones(BaseModel):
+    equipo_id: int
+    nombre_equipo: str
+    jj: int = 0  # Juegos Jugados
+    jg: int = 0  # Juegos Ganados
+    je: int = 0  # Juegos Empatados
+    jp: int = 0  # Juegos Perdidos
+    gf: int = 0  # Goles a Favor
+    gc: int = 0  # Goles en Contra
+    dg: int = 0  # Diferencia de Goles
+    pts: int = 0 # Puntos

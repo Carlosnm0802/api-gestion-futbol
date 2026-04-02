@@ -106,3 +106,19 @@ def registrar_sancion(sancion: schemas.SancionCreate, db: Session = Depends(get_
     Registra una tarjeta (Amarilla/Roja) validando que el jugador esté en el partido.
     """
     return crud.registrar_sancion(db=db, sancion_data=sancion)
+
+@app.get("/temporadas/{temporada_id}/tabla", response_model=List[schemas.TablaPosiciones], tags=["Estadísticas"])
+def obtener_tabla_de_posiciones(temporada_id: int, db: Session = Depends(get_db)):
+    """
+    Calcula y devuelve la tabla de posiciones en tiempo real para una temporada específica.
+    """
+    return crud.get_tabla_posiciones(db, temporada_id=temporada_id)
+
+@app.patch("/partidos/{partido_id}/finalizar", response_model=schemas.Partido, tags=["Partidos"])
+def finalizar_partido(partido_id: int,db: Session = Depends(get_db)):
+    """Marca un partido como finalizado.
+    Esto hara que sus goles cuenten oficialmente para la tabla de posiciones."""
+    partido = crud.finalizar_partido(db,partido_id=partido_id)
+    if not partido:
+        raise HTTPException(status_code=404, detail='Partido no encontrado')
+    return partido 

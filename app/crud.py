@@ -126,3 +126,50 @@ def registrar_sancion(db: Session, sancion_data: schemas.SancionCreate):
     db.commit()
     db.refresh(db_sancion)
     return db_sancion
+
+def get_tabla_posiciones(db: Session, temporada_id: int):
+    # 1. Obtener equipos de la temporada
+    equipos = db.query(models.Equipo).filter(models.Equipo.temporada_id == temporada_id).all()
+    
+    # 2. Obtener partidos finalizados de esa temporada
+    partidos = db.query(models.Partido).filter(
+        models.Partido.temporada_id == temporada_id,
+        models.Partido.finalizado == True
+    ).all()
+
+    # 3. Inicializar el diccionario de la tabla
+    tabla = {e.id: {
+        "equipo_id": e.id, "nombre_equipo": e.nombre,
+        "jj": 0, "jg": 0, "je": 0, "jp": 0, "gf": 0, "gc": 0, "dg": 0, "pts": 0
+    } for e in equipos}
+
+    # 4. Procesar resultados de cada partido
+    for p in partidos:
+        loc = tabla[p.equipo_local_id]
+        vis = tabla[p.equipo_visita_id]
+
+        loc["jj"] += 1; vis["jj"] += 1
+        loc["gf"] += p.goles_local; loc["gc"] += p.goles_visita
+        vis["gf"] += p.goles_visita; vis["gc"] += p.goles_local
+
+        if p.goles_local > p.goles_visita:
+            loc["jg"] += 1; loc["pts"] += 3; vis["jp"] += 1
+        elif p.goles_visita > p.goles_local:
+            vis["jg"] += 1; vis["pts"] += 3; loc["jp"] += 1
+        else:
+            loc["je"] += 1; loc["pts"] += 1; vis["je"] += 1; vis["pts"] += 1
+
+    # 5. Calcular diferencia de goles y ordenar
+    resultados = list(tabla.values())
+    for r in resultados:
+        r["dg"] = r["gf"] - r["gc"]
+
+    # Ordenar por Puntos y luego por Diferencia de Goles (Criterio de desempate)
+    return sorted(resultados, key=lambda x: (x["pts"], x["dg"]), reverse=True)
+def finalizar_partido(db:Session,partido_id: int):
+    db_partido = db.query(models.Partido).filter(models.Partido.id==partido_id).first()
+    if db_partido:
+        db_partido.finalizado = True
+        db.commit()
+        db.refresh(db_partido)
+    return db_partido
