@@ -1,7 +1,23 @@
 from sqlalchemy.orm import Session
-from . import models, schemas
+from . import models, schemas,auth
 from fastapi import HTTPException
 
+def get_user_by_username(db: Session,username: str):
+    return db.query(models.User).filter(models.User.username == username).first()
+
+def create_user(db: Session,user: schemas.UserCreate):
+    #Encriptamos la contraseña antes de guardar
+    hashed_pwd  = auth.get_password_hash(user.password)
+    #Creamos el objeto del modelo omitiendo la clave plana
+    db_user = models.User(
+        username=user.username,
+        email=user.email,
+        hashed_password=hashed_pwd
+    )
+    db.add(db_user)
+    db.commit()
+    db.refresh(db_user)
+    return db_user
 #FUNCIONES PARA TEMPORADAS
 def get_temporada(db: Session, temporada_id: int):
     return db.query(models.Temporada).filter(models.Temporada.id == temporada_id).first()

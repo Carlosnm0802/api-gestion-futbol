@@ -1,8 +1,12 @@
+from .auth import get_current_user
 from fastapi import FastAPI, Depends, HTTPException
 from sqlalchemy.orm import Session
 from typing import List
 from . import crud, models, schemas
 from .database import engine, get_db
+from fastapi.security import OAuth2PasswordRequestForm
+from .auth import create_access_token, verify_password, ACCESS_TOKEN_EXPIRE_MINUTES
+from datetime import timedelta
 
 # Crea las tablas en Supabase si no existen
 models.Base.metadata.create_all(bind=engine)
@@ -50,8 +54,14 @@ def listar_categorias(db: Session = Depends(get_db)):
 #RUTAS DE EQUIPOS
 
 @app.post("/equipos/", response_model=schemas.Equipo, tags=["Equipos"])
-def crear_equipo(equipo: schemas.EquipoCreate, db: Session = Depends(get_db)):
-    """Registra un equipo. Requiere categoria_id y temporada_id existentes."""
+def crear_equipo(
+    equipo: schemas.EquipoCreate, 
+    db: Session = Depends(get_db),
+    current_user: models.User = Depends(get_current_user)
+):
+    """
+    Registra un equipo. REQUIERE TOKEN DE ADMINISTRADOR.
+    """
     return crud.create_equipo(db=db, equipo=equipo)
 
 @app.get("/equipos/", response_model=List[schemas.Equipo], tags=["Equipos"])
@@ -75,6 +85,7 @@ def registrar_jugador(jugador: schemas.JugadorCreate, db: Session = Depends(get_
 @app.get("/equipos/{equipo_id}/jugadores", response_model=List[schemas.Jugador], tags=["Jugadores"])
 def listar_jugadores_equipo(equipo_id: int, db: Session = Depends(get_db)):
     return crud.get_jugador_por_equipo(db, equipo_id=equipo_id)
+
 
 @app.get("/jugadores/{jugador_id}", response_model=schemas.Jugador, tags=["Jugadores"])
 def leer_jugador(jugador_id: int, db: Session = Depends(get_db)):
@@ -122,3 +133,40 @@ def finalizar_partido(partido_id: int,db: Session = Depends(get_db)):
     if not partido:
         raise HTTPException(status_code=404, detail='Partido no encontrado')
     return partido 
+
+@app.post("/users/", response_model=schemas.User, tags=["Seguridad"])
+def registrar_usuario(user: schemas.UserCreate, db: Session = Depends(get_db)):
+    """
+    Crea un nuevo administrador. La contraseña se encripta automáticamente.
+    """
+    # Verificamos si el nombre de usuario ya existe
+    db_user = crud.get_user_by_username(db, username=user.username)
+    if db_user:
+        raise HTTPException(status_code=400, detail="El nombre de usuario ya está registrado en Ocotlán")
+    
+    return crud.create_user(db=db, user=user)
+
+@app.post("/token", response_model=schemas.Token, tags=["Seguridad"])
+def login_para_obtener_access_token(
+    form_data: OAuth2PasswordRequestForm = Depends(), 
+    db: Session = Depends(get_db)
+):
+    # Buscamos al usuario en la base de datos de Ocotlán
+    user = crud.get_user_by_username(db, username=form_data.username)
+    
+    # Validamos si existe y si la contraseña (hash) coincide
+    if not user or not verify_password(form_data.password, user.hashed_password):
+        raise HTTPException(
+            status_code=401,
+            detail="Usuario o contraseña incorrectos",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
+    
+    #Generamos el pase VIP (Token)
+    access_token_expires = timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
+    access_token = create_access_token(
+        data={"sub": user.username}, 
+        expires_delta=access_token_expires
+    )
+    
+    return {"access_token": access_token, "token_type": "bearer"}
